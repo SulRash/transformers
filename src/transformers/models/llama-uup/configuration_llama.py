@@ -17,17 +17,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""LLaMA model configuration"""
+"""LlamaUP model configuration"""
 
 from ...configuration_utils import PretrainedConfig
 from ...modeling_rope_utils import rope_config_validation
 
 
-class LlamaConfig(PretrainedConfig):
+class LlamaUPConfig(PretrainedConfig):
     r"""
-    This is the configuration class to store the configuration of a [`LlamaModel`]. It is used to instantiate an LLaMA
+    This is the configuration class to store the configuration of a [`LlamaUPModel`]. It is used to instantiate an LlamaUP
     model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
-    defaults will yield a similar configuration to that of the LLaMA-7B.
+    defaults will yield a similar configuration to that of the LlamaUP-7B.
 
     Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
     documentation from [`PretrainedConfig`] for more information.
@@ -35,8 +35,8 @@ class LlamaConfig(PretrainedConfig):
 
     Args:
         vocab_size (`int`, *optional*, defaults to 32000):
-            Vocabulary size of the LLaMA model. Defines the number of different tokens that can be represented by the
-            `inputs_ids` passed when calling [`LlamaModel`]
+            Vocabulary size of the LlamaUP model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`LlamaUPModel`]
         hidden_size (`int`, *optional*, defaults to 4096):
             Dimension of the hidden representations.
         intermediate_size (`int`, *optional*, defaults to 11008):
@@ -56,8 +56,8 @@ class LlamaConfig(PretrainedConfig):
         hidden_act (`str` or `function`, *optional*, defaults to `"silu"`):
             The non-linear activation function (function or string) in the decoder.
         max_position_embeddings (`int`, *optional*, defaults to 2048):
-            The maximum sequence length that this model might ever be used with. Llama 1 supports up to 2048 tokens,
-            Llama 2 up to 4096, CodeLlama up to 16384.
+            The maximum sequence length that this model might ever be used with. LlamaUP 1 supports up to 2048 tokens,
+            LlamaUP 2 up to 4096, CodeLlamaUP up to 16384.
         initializer_range (`float`, *optional*, defaults to 0.02):
             The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
         rms_norm_eps (`float`, *optional*, defaults to 1e-06):
@@ -87,13 +87,13 @@ class LlamaConfig(PretrainedConfig):
             Expected contents:
                 `rope_type` (`str`):
                     The sub-variant of RoPE to use. Can be one of ['default', 'linear', 'dynamic', 'yarn', 'longrope',
-                    'llama3'], with 'default' being the original RoPE implementation.
+                    'LlamaUP3'], with 'default' being the original RoPE implementation.
                 `factor` (`float`, *optional*):
                     Used with all rope types except 'default'. The scaling factor to apply to the RoPE embeddings. In
                     most scaling types, a `factor` of x will enable the model to handle sequences of length x *
                     original maximum pre-trained length.
                 `original_max_position_embeddings` (`int`, *optional*):
-                    Used with 'dynamic', 'longrope' and 'llama3'. The original max position embeddings used during
+                    Used with 'dynamic', 'longrope' and 'LlamaUP3'. The original max position embeddings used during
                     pretraining.
                 `attention_factor` (`float`, *optional*):
                     Used with 'yarn' and 'longrope'. The scaling factor to be applied on the attention
@@ -114,9 +114,9 @@ class LlamaConfig(PretrainedConfig):
                     `original_max_position_embeddings`). Must be a list of numbers with the same length as the hidden
                     size divided by the number of attention heads divided by 2
                 `low_freq_factor` (`float`, *optional*):
-                    Only used with 'llama3'. Scaling factor applied to low frequency components of the RoPE
+                    Only used with 'LlamaUP3'. Scaling factor applied to low frequency components of the RoPE
                 `high_freq_factor` (`float`, *optional*):
-                    Only used with 'llama3'. Scaling factor applied to high frequency components of the RoPE
+                    Only used with 'LlamaUP3'. Scaling factor applied to high frequency components of the RoPE
         attention_bias (`bool`, *optional*, defaults to `False`):
             Whether to use a bias in the query, key, value and output projection layers during self-attention.
         attention_dropout (`float`, *optional*, defaults to 0.0):
@@ -127,21 +127,21 @@ class LlamaConfig(PretrainedConfig):
             The attention head dimension. If None, it will default to hidden_size // num_attention_heads
 
     ```python
-    >>> from transformers import LlamaModel, LlamaConfig
+    >>> from transformers import LlamaUPModel, LlamaUPConfig
 
-    >>> # Initializing a LLaMA llama-7b style configuration
-    >>> configuration = LlamaConfig()
+    >>> # Initializing a LlamaUP LlamaUP-7b style configuration
+    >>> configuration = LlamaUPConfig()
 
-    >>> # Initializing a model from the llama-7b style configuration
-    >>> model = LlamaModel(configuration)
+    >>> # Initializing a model from the LlamaUP-7b style configuration
+    >>> model = LlamaUPModel(configuration)
 
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
 
-    model_type = "llama"
+    model_type = "LlamaUP"
     keys_to_ignore_at_inference = ["past_key_values"]
-    # Default tensor parallel plan for base model `LlamaModel`
+    # Default tensor parallel plan for base model `LlamaUPModel`
     base_model_tp_plan = {
         "layers.*.self_attn.q_proj": "colwise",
         "layers.*.self_attn.k_proj": "colwise",
@@ -216,4 +216,4 @@ class LlamaConfig(PretrainedConfig):
         )
 
 
-__all__ = ["LlamaConfig"]
+__all__ = ["LlamaUPConfig"]

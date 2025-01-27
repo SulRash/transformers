@@ -26,7 +26,6 @@ from torch import nn
 import unit_scaling as uu
 import unit_scaling.functional as U
 
-from ...activations import ACT2FN
 from ...cache_utils import Cache, DynamicCache, StaticCache
 from ...generation import GenerationMixin
 from ...modeling_attn_mask_utils import AttentionMaskConverter
@@ -51,16 +50,12 @@ from ...utils import (
     replace_return_docstrings,
 )
 from ...utils.deprecation import deprecate_kwarg
-from .configuration_llama import LlamaConfig
+from .configuration_llama import LlamaUPConfig
 
 
 logger = logging.get_logger(__name__)
 
-_CHECKPOINT_FOR_DOC = "meta-llama/Llama-2-7b-hf"
-_CONFIG_FOR_DOC = "LlamaConfig"
-
-
-class LlamaRMSNorm(nn.Module):
+class LlamaUPRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
         super().__init__()
         self.norm = uu.RMSNorm(
@@ -75,11 +70,11 @@ class LlamaRMSNorm(nn.Module):
         hidden_states = self.norm(hidden_states)
         return hidden_states.to(input_dtype)
 
-ALL_LAYERNORM_LAYERS.append(LlamaRMSNorm)
+ALL_LAYERNORM_LAYERS.append(LlamaUPRMSNorm)
 
 
-class LlamaRotaryEmbedding(nn.Module):
-    def __init__(self, config: LlamaConfig, device=None):
+class LlamaUPRotaryEmbedding(nn.Module):
+    def __init__(self, config: LlamaUPConfig, device=None):
         super().__init__()
         # BC: "rope_type" was originally "type"
         if hasattr(config, "rope_scaling") and config.rope_scaling is not None:
@@ -173,7 +168,7 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
     return q_embed, k_embed
 
 
-class LlamaMLP(nn.Module):
+class LlamaUPMLP(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -228,10 +223,10 @@ def eager_attention_forward(
     return attn_output, attn_weights
 
 
-class LlamaAttention(nn.Module):
+class LlamaUPAttention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
-    def __init__(self, config: LlamaConfig, layer_idx: int):
+    def __init__(self, config: LlamaUPConfig, layer_idx: int):
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
@@ -305,16 +300,16 @@ class LlamaAttention(nn.Module):
         return attn_output, attn_weights
 
 
-class LlamaDecoderLayer(nn.Module):
-    def __init__(self, config: LlamaConfig, layer_idx: int):
+class LlamaUPDecoderLayer(nn.Module):
+    def __init__(self, config: LlamaUPConfig, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
 
-        self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
+        self.self_attn = LlamaUPAttention(config=config, layer_idx=layer_idx)
 
-        self.mlp = LlamaMLP(config)
-        self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.mlp = LlamaUPMLP(config)
+        self.input_layernorm = LlamaUPRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = LlamaUPRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
         tau_rule = uu.transformer_residual_scaling_rule()
         self.attn_tau = tau_rule(2 * layer_idx, 2 * config.num_hidden_layers)
@@ -363,7 +358,7 @@ class LlamaDecoderLayer(nn.Module):
         return outputs
 
 
-LLAMA_START_DOCSTRING = r"""
+LlamaUP_START_DOCSTRING = r"""
     This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
     library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
     etc.)
@@ -373,7 +368,7 @@ LLAMA_START_DOCSTRING = r"""
     and behavior.
 
     Parameters:
-        config ([`LlamaConfig`]):
+        config ([`LlamaUPConfig`]):
             Model configuration class with all the parameters of the model. Initializing with a config file does not
             load the weights associated with the model, only the configuration. Check out the
             [`~PreTrainedModel.from_pretrained`] method to load the model weights.
@@ -381,14 +376,14 @@ LLAMA_START_DOCSTRING = r"""
 
 
 @add_start_docstrings(
-    "The bare LLaMA Model outputting raw hidden-states without any specific head on top.",
-    LLAMA_START_DOCSTRING,
+    "The bare LlamaUP Model outputting raw hidden-states without any specific head on top.",
+    LlamaUP_START_DOCSTRING,
 )
-class LlamaPreTrainedModel(PreTrainedModel):
-    config_class = LlamaConfig
+class LlamaUPPreTrainedModel(PreTrainedModel):
+    config_class = LlamaUPConfig
     base_model_prefix = "model"
     supports_gradient_checkpointing = True
-    _no_split_modules = ["LlamaDecoderLayer"]
+    _no_split_modules = ["LlamaUPDecoderLayer"]
     _skip_keys_device_placement = ["past_key_values"]
     _supports_flash_attn_2 = True
     _supports_sdpa = True
@@ -410,7 +405,7 @@ class LlamaPreTrainedModel(PreTrainedModel):
                 module.weight.data[module.padding_idx].zero_()
 
 
-LLAMA_INPUTS_DOCSTRING = r"""
+LlamaUP_INPUTS_DOCSTRING = r"""
     Args:
         input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
             Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you provide
@@ -486,18 +481,18 @@ LLAMA_INPUTS_DOCSTRING = r"""
 
 
 @add_start_docstrings(
-    "The bare LLaMA Model outputting raw hidden-states without any specific head on top.",
-    LLAMA_START_DOCSTRING,
+    "The bare LlamaUP Model outputting raw hidden-states without any specific head on top.",
+    LlamaUP_START_DOCSTRING,
 )
-class LlamaModel(LlamaPreTrainedModel):
+class LlamaUPModel(LlamaUPPreTrainedModel):
     """
-    Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`LlamaDecoderLayer`]
+    Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`LlamaUPDecoderLayer`]
 
     Args:
-        config: LlamaConfig
+        config: LlamaUPConfig
     """
 
-    def __init__(self, config: LlamaConfig):
+    def __init__(self, config: LlamaUPConfig):
         super().__init__(config)
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
@@ -506,10 +501,10 @@ class LlamaModel(LlamaPreTrainedModel):
         
         # ModuleList has to be changed to DepthModuleList for uup
         self.layers = uu.DepthModuleList(
-            [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+            [LlamaUPDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
-        self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.rotary_emb = LlamaRotaryEmbedding(config=config)
+        self.norm = LlamaUPRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.rotary_emb = LlamaUPRotaryEmbedding(config=config)
         self.gradient_checkpointing = False
 
         # Initialize weights and apply final processing
@@ -521,7 +516,7 @@ class LlamaModel(LlamaPreTrainedModel):
     def set_input_embeddings(self, value):
         self.embed_tokens = value
 
-    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_model_forward(LlamaUP_INPUTS_DOCSTRING)
     def forward(
         self,
         input_ids: torch.LongTensor = None,
@@ -753,13 +748,13 @@ class LlamaModel(LlamaPreTrainedModel):
 class KwargsForCausalLM(FlashAttentionKwargs, LossKwargs): ...
 
 
-class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
+class LlamaUPForCausalLM(LlamaUPPreTrainedModel, GenerationMixin):
     _tied_weights_keys = ["lm_head.weight"]
     _tp_plan = {"lm_head": "colwise_rep"}
 
     def __init__(self, config):
         super().__init__(config)
-        self.model = LlamaModel(config)
+        self.model = LlamaUPModel(config)
         self.vocab_size = config.vocab_size
 
         # Final projection layer has to be LinearReadout for uup
@@ -787,7 +782,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
         return self.model
 
     @deprecate_kwarg("num_logits_to_keep", version="4.50", new_name="logits_to_keep")
-    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_model_forward(LlamaUP_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
@@ -824,10 +819,10 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
         Example:
 
         ```python
-        >>> from transformers import AutoTokenizer, LlamaForCausalLM
+        >>> from transformers import AutoTokenizer, LlamaUPForCausalLM
 
-        >>> model = LlamaForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
-        >>> tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+        >>> model = LlamaUPForCausalLM.from_pretrained("meta-LlamaUP/LlamaUP-2-7b-hf")
+        >>> tokenizer = AutoTokenizer.from_pretrained("meta-LlamaUP/LlamaUP-2-7b-hf")
 
         >>> prompt = "Hey, are you conscious? Can you talk to me?"
         >>> inputs = tokenizer(prompt, return_tensors="pt")
@@ -882,9 +877,9 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
 
 @add_start_docstrings(
     """
-    The LLaMa Model transformer with a sequence classification head on top (linear layer).
+    The LlamaUP Model transformer with a sequence classification head on top (linear layer).
 
-    [`LlamaForSequenceClassification`] uses the last token in order to do the classification, as other causal models
+    [`LlamaUPForSequenceClassification`] uses the last token in order to do the classification, as other causal models
     (e.g. GPT-2) do.
 
     Since it does classification on the last token, it requires to know the position of the last token. If a
@@ -893,13 +888,13 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
     padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last value in
     each row of the batch).
     """,
-    LLAMA_START_DOCSTRING,
+    LlamaUP_START_DOCSTRING,
 )
-class LlamaForSequenceClassification(LlamaPreTrainedModel):
+class LlamaUPForSequenceClassification(LlamaUPPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
-        self.model = LlamaModel(config)
+        self.model = LlamaUPModel(config)
         self.score = uu.Linear(config.hidden_size, self.num_labels, bias=False)
 
         # Initialize weights and apply final processing
@@ -911,7 +906,7 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
     def set_input_embeddings(self, value):
         self.model.embed_tokens = value
 
-    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_model_forward(LlamaUP_INPUTS_DOCSTRING)
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
@@ -986,18 +981,18 @@ class LlamaForSequenceClassification(LlamaPreTrainedModel):
 
 @add_start_docstrings(
     """
-The Llama Model transformer with a span classification head on top for extractive question-answering tasks like
+The LlamaUP Model transformer with a span classification head on top for extractive question-answering tasks like
 SQuAD (a linear layer on top of the hidden-states output to compute `span start logits` and `span end logits`).
     """,
-    LLAMA_START_DOCSTRING,
+    LlamaUP_START_DOCSTRING,
 )
-class LlamaForQuestionAnswering(LlamaPreTrainedModel):
+class LlamaUPForQuestionAnswering(LlamaUPPreTrainedModel):
     base_model_prefix = "transformer"
 
-    # Copied from transformers.models.bloom.modeling_bloom.BloomForQuestionAnswering.__init__ with Bloom->Llama
+    # Copied from transformers.models.bloom.modeling_bloom.BloomForQuestionAnswering.__init__ with Bloom->LlamaUP
     def __init__(self, config):
         super().__init__(config)
-        self.transformer = LlamaModel(config)
+        self.transformer = LlamaUPModel(config)
         self.qa_outputs = uu.Linear(config.hidden_size, 2)
 
         # Initialize weights and apply final processing
@@ -1009,7 +1004,7 @@ class LlamaForQuestionAnswering(LlamaPreTrainedModel):
     def set_input_embeddings(self, value):
         self.transformer.embed_tokens = value
 
-    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_model_forward(LlamaUP_INPUTS_DOCSTRING)
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
@@ -1073,16 +1068,16 @@ class LlamaForQuestionAnswering(LlamaPreTrainedModel):
 
 @add_start_docstrings(
     """
-    The Llama Model transformer with a token classification head on top (a linear layer on top of the hidden-states
+    The LlamaUP Model transformer with a token classification head on top (a linear layer on top of the hidden-states
     output) e.g. for Named-Entity-Recognition (NER) tasks.
     """,
-    LLAMA_START_DOCSTRING,
+    LlamaUP_START_DOCSTRING,
 )
-class LlamaForTokenClassification(LlamaPreTrainedModel):
+class LlamaUPForTokenClassification(LlamaUPPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
-        self.model = LlamaModel(config)
+        self.model = LlamaUPModel(config)
         if getattr(config, "classifier_dropout", None) is not None:
             classifier_dropout = config.classifier_dropout
         elif getattr(config, "hidden_dropout", None) is not None:
@@ -1101,11 +1096,9 @@ class LlamaForTokenClassification(LlamaPreTrainedModel):
     def set_input_embeddings(self, value):
         self.model.embed_tokens = value
 
-    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_model_forward(LlamaUP_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
-        checkpoint=_CHECKPOINT_FOR_DOC,
-        output_type=TokenClassifierOutput,
-        config_class=_CONFIG_FOR_DOC,
+        output_type=TokenClassifierOutput
     )
     def forward(
         self,
@@ -1160,10 +1153,10 @@ class LlamaForTokenClassification(LlamaPreTrainedModel):
 
 
 __all__ = [
-    "LlamaForCausalLM",
-    "LlamaModel",
-    "LlamaPreTrainedModel",
-    "LlamaForSequenceClassification",
-    "LlamaForQuestionAnswering",
-    "LlamaForTokenClassification",
+    "LlamaUPForCausalLM",
+    "LlamaUPModel",
+    "LlamaUPPreTrainedModel",
+    "LlamaUPForSequenceClassification",
+    "LlamaUPForQuestionAnswering",
+    "LlamaUPForTokenClassification",
 ]
