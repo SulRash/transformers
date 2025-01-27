@@ -549,6 +549,7 @@ _import_structure = {
     "models.levit": ["LevitConfig"],
     "models.lilt": ["LiltConfig"],
     "models.llama": ["LlamaConfig"],
+    "models.llama_uup": ["LlamaUPConfig"],
     "models.llava": [
         "LlavaConfig",
         "LlavaProcessor",
@@ -2699,6 +2700,16 @@ else:
             "LlamaForTokenClassification",
             "LlamaModel",
             "LlamaPreTrainedModel",
+        ]
+    )
+    _import_structure["models.llama_uup"].extend(
+        [
+            "LlamaUPForCausalLM",
+            "LlamaUPForQuestionAnswering",
+            "LlamaUPForSequenceClassification",
+            "LlamaUPForTokenClassification",
+            "LlamaUPModel",
+            "LlamaUPPreTrainedModel",
         ]
     )
     _import_structure["models.llava"].extend(
@@ -5609,6 +5620,7 @@ if TYPE_CHECKING:
     from .models.levit import LevitConfig
     from .models.lilt import LiltConfig
     from .models.llama import LlamaConfig
+    from .models.llama_uup import LlamaUPConfig
     from .models.llava import (
         LlavaConfig,
         LlavaProcessor,
@@ -7547,6 +7559,14 @@ if TYPE_CHECKING:
             LlamaForTokenClassification,
             LlamaModel,
             LlamaPreTrainedModel,
+        )
+        from .models.llama_uup import (
+            LlamaUPForCausalLM,
+            LlamaUPForQuestionAnswering,
+            LlamaUPForSequenceClassification,
+            LlamaUPForTokenClassification,
+            LlamaUPModel,
+            LlamaUPPreTrainedModel,
         )
         from .models.llava import (
             LlavaForConditionalGeneration,
