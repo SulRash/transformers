@@ -316,6 +316,10 @@ class LlamaDecoderLayer(nn.Module):
         self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
+        tau_rule = uu.transformer_residual_scaling_rule()
+        self.attn_tau = tau_rule(2 * layer_idx, 2 * config.num_hidden_layers)
+        self.mlp_tau = tau_rule(2 * layer_idx + 1, 2 * config.num_hidden_layers)
+
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -328,7 +332,7 @@ class LlamaDecoderLayer(nn.Module):
         position_embeddings: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,  # necessary, but kept here for BC
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
-        residual = hidden_states
+        residual, skip = U.residual_split(hidden_states, self.attn_tau)
 
         hidden_states = self.input_layernorm(hidden_states)
 
@@ -344,13 +348,13 @@ class LlamaDecoderLayer(nn.Module):
             position_embeddings=position_embeddings,
             **kwargs,
         )
-        hidden_states = residual + hidden_states
+        hidden_states = U.residual_add(residual, skip, self.attn_tau)
 
         # Fully Connected
-        residual = hidden_states
+        residual, skip = U.residual_split(hidden_states, self.mlp_tau)
         hidden_states = self.post_attention_layernorm(hidden_states)
         hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + hidden_states
+        hidden_states = U.residual_add(residual, skip, self.mlp_tau)
 
         outputs = (hidden_states,)
         if output_attentions:
@@ -499,13 +503,14 @@ class LlamaModel(LlamaPreTrainedModel):
         self.vocab_size = config.vocab_size
 
         self.embed_tokens = uu.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
-        self.layers = nn.ModuleList(
+        
+        # ModuleList has to be changed to DepthModuleList for uup
+        self.layers = uu.DepthModuleList(
             [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.rotary_emb = LlamaRotaryEmbedding(config=config)
         self.gradient_checkpointing = False
-        self.unit_scaling = config.unit_scaling
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -756,7 +761,9 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
         super().__init__(config)
         self.model = LlamaModel(config)
         self.vocab_size = config.vocab_size
-        self.lm_head = uu.Linear(config.hidden_size, config.vocab_size, bias=False)
+
+        # Final projection layer has to be LinearReadout for uup
+        self.lm_head = uu.LinearReadout(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
