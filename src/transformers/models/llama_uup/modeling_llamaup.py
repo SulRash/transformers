@@ -50,7 +50,7 @@ from ...utils import (
     replace_return_docstrings,
 )
 from ...utils.deprecation import deprecate_kwarg
-from .configuration_llama import LlamaUPConfig
+from .configuration_llamaup import LlamaUPConfig
 
 
 logger = logging.get_logger(__name__)
