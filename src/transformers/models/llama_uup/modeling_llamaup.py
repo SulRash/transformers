@@ -52,8 +52,10 @@ from ...utils import (
 from ...utils.deprecation import deprecate_kwarg
 from .configuration_llamaup import LlamaUPConfig
 
-
 logger = logging.get_logger(__name__)
+
+_CHECKPOINT_FOR_DOC = "meta-llama/Llama-2-7b-hf"
+_CONFIG_FOR_DOC = "LlamaConfig"
 
 class LlamaUPRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
