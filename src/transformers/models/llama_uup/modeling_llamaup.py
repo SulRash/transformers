@@ -180,7 +180,7 @@ class LlamaUPMLP(nn.Module):
         self.gate_proj = uu.Linear(self.hidden_size, self.intermediate_size)
         self.up_proj = uu.Linear(self.hidden_size, self.intermediate_size)
         self.down_proj = uu.Linear(self.intermediate_size, self.hidden_size)
-        self.act_fn = uu.SiLU
+        self.act_fn = uu.SiLU()
 
     def forward(self, x):
         down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
