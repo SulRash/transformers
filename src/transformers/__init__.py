@@ -2709,6 +2709,7 @@ else:
             "LlamaUPForSequenceClassification",
             "LlamaUPForTokenClassification",
             "LlamaUPModel",
+            "LlamaUPDecoderLayer"
             "LlamaUPPreTrainedModel",
         ]
     )
@@ -7566,6 +7567,7 @@ if TYPE_CHECKING:
             LlamaUPForSequenceClassification,
             LlamaUPForTokenClassification,
             LlamaUPModel,
+            LlamaUPDecoderLayer,
             LlamaUPPreTrainedModel,
         )
         from .models.llava import (

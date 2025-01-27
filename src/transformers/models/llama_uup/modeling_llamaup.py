@@ -1157,6 +1157,7 @@ class LlamaUPForTokenClassification(LlamaUPPreTrainedModel):
 __all__ = [
     "LlamaUPForCausalLM",
     "LlamaUPModel",
+    "LlamaUPDecoderLayer"
     "LlamaUPPreTrainedModel",
     "LlamaUPForSequenceClassification",
     "LlamaUPForQuestionAnswering",
